@@ -1,0 +1,101 @@
+#include"DHT.h"
+#include <EEPROM.h>
+#include <ESP8266WiFi.h>
+#include <ESP8266WebServer.h>
+#define ld_g D7
+#define ld_r D8
+#define dht D1
+#define soil A0
+#define relay D5
+//set wifi pass
+#define WIFI_SSID "Mahdie" 
+#define WIFI_PASS "uselesspls1"
+
+///creat web server
+ESP8266WebServer webserver(80);
+///handle root 
+void rootPage(){
+ 
+  //webserver.send(200,"text/plain","Check out http://www.siytek.com!");
+}
+///handle 404
+  void notfoundPage(){
+  webserver.send(404,"text/plain","404 not found!");
+  }  
+int soilHu = 0;
+DHT _dht(dht, DHT11);
+int addr = 0;
+void setup() {
+ Serial.begin(9600);
+Serial.println();
+Serial.println("hiii");
+//  //begin WiFi
+ WiFi.begin(WIFI_SSID, WIFI_PASS);
+  while(WiFi.status() !=WL_CONNECTED){
+  delay(100);  
+  }
+  //WiFi connected
+ Serial.print("Connected! IP address: ");
+  Serial.println(WiFi.localIP());
+  delay(10000);
+  ///start web server
+  webserver.on("/", rootPage);
+  webserver.onNotFound(notfoundPage);
+  webserver.begin();
+  //////////////EEPROM
+  EEPROM.begin(512);  //Initialize EEPROM
+  // write to EEPROM.
+  EEPROM.write(addr, 'a');    
+  addr++;                      //Increment address
+  EEPROM.write(addr, 'b');   
+  addr++;                      //Increment address
+  EEPROM.write(addr, 'C');    
+ 
+  //Write string to eeprom
+  String sample = "testing eeprom";
+  for(int i=0;i<sample.length();i++)
+  {
+    EEPROM.write(0x0F+i, sample[i]); //Write one by one with starting address of 0x0F
+  }
+  EEPROM.commit();    //Store data to EEPROM
+  
+  pinMode(ld_r, OUTPUT);
+  pinMode(ld_g, OUTPUT);
+  digitalWrite(ld_r, LOW);
+  digitalWrite(ld_g, LOW);
+  pinMode(dht, INPUT);
+  pinMode(relay, OUTPUT);
+  pinMode(soil, INPUT);
+  _dht.begin();
+  digitalWrite(relay, HIGH);
+}
+
+void loop() {
+  webserver.handleClient();
+  soilHu = analogRead(soil);
+  if(768 < soilHu)
+  {
+    digitalWrite(ld_g, HIGH);
+    digitalWrite(ld_r, LOW);
+    // Turning the pump ON
+    //digitalWrite(relay, LOW);
+    //digitalWrite(relay, HIGH);
+  }
+  else
+  {
+    digitalWrite(ld_r, HIGH);
+    digitalWrite(ld_g, LOW);
+  }
+
+  int DHT11_t = _dht.readTemperature();
+  int DHT11_h = _dht.readHumidity();
+  
+  Serial.print("Temp: ");
+  Serial.print(DHT11_t);
+  Serial.print("          ");
+  Serial.print("Hu: ");
+  Serial.print(DHT11_h);
+  Serial.print("          ");
+  Serial.print("Soil: ");
+  Serial.println(soilHu);
+}
